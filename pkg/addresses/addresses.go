@@ -7,12 +7,10 @@ import (
 	"github.com/gocarina/gocsv"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
-	"os"
-
-	//"github.com/gocarina/gocsv"
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 )
 
 //go:embed assets
@@ -82,20 +80,36 @@ func Serve(urlPrefix string, efs embed.FS) gin.HandlerFunc {
 	}
 }
 
+type Search struct {
+	Term string`json:"Term"`
+}
+
 // Take a search condition and do the PSQL query based on that.
 func (db *DBConfig) FetchAddresses(c *gin.Context) {
-
 	var Addresses []House
-	db.DBConn.Find(&Addresses)
+	fmt.Printf("Req body: %+v\n", c.Request.Body)
+	var s Search
+	err := c.BindJSON(&s)
+	if err != nil{
+		log.Fatalf(err.Error())
+	}
+	fmt.Printf("term: %s\n", s.Term)
+
+
+	db.DBConn.Where("Address ILIKE ?", fmt.Sprintf("%%%s%%", s.Term)).Find(&Addresses)
+	//db.DBConn.Find(&Addresses, fmt.Sprintf("Address ILIKE %s", s.Term))
+	// Look up how to do a Find based on "like *...*"
+
 	c.JSON(http.StatusOK, Addresses)
 }
 
+// InsertHouse inserts one house into the db.  Could speed things up w/ batch insert if we cared.
 func (db *DBConfig) InsertHouse(h *House) (err error){
 	err = db.DBConn.Create(h).Error
 	return err
 }
 
-
+// SetUpRouter gets the engine ready to serve static files and to handle routes
 func (db *DBConfig) SetUpRouter(address string, port int) (router *gin.Engine) {
 	router = gin.Default()
 
@@ -103,13 +117,13 @@ func (db *DBConfig) SetUpRouter(address string, port int) (router *gin.Engine) {
 
 	// Routes
 	router.Use(Serve("/", content))
-	api.GET("/addresses", db.FetchAddresses)
+	api.POST("/addresses", db.FetchAddresses)
 	addr := fmt.Sprintf("%s:%d", address, port)
 	fmt.Printf("Server starting on %s\n", addr)
 	return router
 }
 
-// For now take in the csv locally and read it into psql
+// ImportData takes in the csv locally and reads it into psql
 func (db *DBConfig) ImportData() {
 	in, err := os.Open("/go/src/addresses-challenge/pkg/addresses/assets/addressdata.csv")
 	if err != nil {
@@ -126,9 +140,6 @@ func (db *DBConfig) ImportData() {
 			log.Fatalf(err.Error())
 		}
 	}
-	var dataReturn []*House
-	db.DBConn.Find(&dataReturn)
-	fmt.Printf("FROM DB:  %+v\n", dataReturn)
 }
 
 func RunServer(dbHost string, dbPort int, dbUser string, dbPassword string, dbName string, address string, port int, version string) (err error) {

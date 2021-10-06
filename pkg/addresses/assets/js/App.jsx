@@ -9,7 +9,15 @@ class App extends React.Component {
   }
   componentDidMount() {
     const fetchEndpoint = "api/addresses"
-    fetch(fetchEndpoint)
+
+    let search = { Term: "MA" }
+
+    let initReq = {
+      method: "POST",
+      body: JSON.stringify(search)
+    }
+
+    fetch(fetchEndpoint, initReq)
     .then(res => res.json())
     .then(json => {
       console.log('json: \n', json)
@@ -21,7 +29,7 @@ class App extends React.Component {
 
   render() {
     return (
-      <div>not much here yet</div>
+      <div>b not much here yet</div>
     )
   }
 }
