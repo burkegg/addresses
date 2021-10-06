@@ -16,6 +16,7 @@ package main
 
 import "github.com/burkegg/addresses/cmd"
 
+const VERSION = "0.0.0"
 func main() {
-	cmd.Execute()
+	cmd.Execute(VERSION)
 }
