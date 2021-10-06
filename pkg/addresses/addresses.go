@@ -82,11 +82,19 @@ func Serve(urlPrefix string, efs embed.FS) gin.HandlerFunc {
 	}
 }
 
+// Take a search condition and do the PSQL query based on that.
 func (db *DBConfig) FetchAddresses(c *gin.Context) {
+
 	var Addresses []House
 	db.DBConn.Find(&Addresses)
 	c.JSON(http.StatusOK, Addresses)
 }
+
+func (db *DBConfig) InsertHouse(h *House) (err error){
+	err = db.DBConn.Create(h).Error
+	return err
+}
+
 
 func (db *DBConfig) SetUpRouter(address string, port int) (router *gin.Engine) {
 	router = gin.Default()
@@ -105,16 +113,22 @@ func (db *DBConfig) SetUpRouter(address string, port int) (router *gin.Engine) {
 func (db *DBConfig) ImportData() {
 	in, err := os.Open("/go/src/addresses-challenge/pkg/addresses/assets/addressdata.csv")
 	if err != nil {
-		panic(err)
+		log.Fatalf(err.Error())
 	}
 	defer in.Close()
 	var data []*House
 	if err := gocsv.UnmarshalFile(in, &data); err != nil {
-		panic(err)
+		log.Fatalf(err.Error())
 	}
 	for _, home := range data {
-		fmt.Println("Address, ", home.Address)
+		err := db.InsertHouse(home)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
 	}
+	var dataReturn []*House
+	db.DBConn.Find(&dataReturn)
+	fmt.Printf("FROM DB:  %+v\n", dataReturn)
 }
 
 func RunServer(dbHost string, dbPort int, dbUser string, dbPassword string, dbName string, address string, port int, version string) (err error) {
