@@ -5,31 +5,51 @@ class App extends React.Component {
     this.state = {
       houses: [],
       version: '',
+      searchTerm: '',
     }
   }
   componentDidMount() {
-    const fetchEndpoint = "api/addresses"
 
-    let search = { Term: "MA" }
+  }
 
+  handleSearchChange = async evt => {
+    await this.setState({ searchTerm: evt.target.value })
+    if (this.state.searchTerm !== '') {
+      await this.handleFetches()
+    }
+  }
+
+  handleFetches = async () => {
+    let search = { Term: this.state.searchTerm}
     let initReq = {
       method: "POST",
       body: JSON.stringify(search)
     }
-
-    fetch(fetchEndpoint, initReq)
-    .then(res => res.json())
-    .then(json => {
-      console.log('json: \n', json)
-    })
-    .catch(err => {
-      console.log('error:', err)
-    })
+    const fetchEndpoint = "api/addresses"
+    let resp = await fetch(fetchEndpoint, initReq)
+    let searchResults = await resp.json()
+    await this.setState({ houses: searchResults })
   }
 
   render() {
     return (
-      <div>b not much here yet</div>
+      <React.Fragment>
+        <form>
+          <label>
+            Search for properties:
+            <input type={'text'} id={'searchInput'} name={'search'} value={this.state.searchTerm} onChange={this.handleSearchChange}/>
+          </label>
+        </form>
+        <div>
+          {
+            this.state.houses.map(property => {
+              return (
+                <div key={property.ID}>{property.Address}</div>
+              )
+            })
+          }
+        </div>
+      </React.Fragment>
     )
   }
 }
