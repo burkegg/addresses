@@ -93,12 +93,8 @@ func (db *DBConfig) FetchAddresses(c *gin.Context) {
 	if err != nil{
 		log.Fatalf(err.Error())
 	}
-	fmt.Printf("term: %s\n", s.Term)
-
 
 	db.DBConn.Where("Address ILIKE ?", fmt.Sprintf("%%%s%%", s.Term)).Find(&Addresses)
-	//db.DBConn.Find(&Addresses, fmt.Sprintf("Address ILIKE %s", s.Term))
-	// Look up how to do a Find based on "like *...*"
 
 	c.JSON(http.StatusOK, Addresses)
 }
