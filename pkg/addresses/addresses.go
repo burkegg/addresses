@@ -36,6 +36,10 @@ type House struct {
 	URL string `csv:"URL (SEE http://www.redfin.com/buy-a-home/comparative-market-analysis FOR INFO ON PRICING)"`
 }
 
+type Search struct {
+	Term string`json:"Term"`
+}
+
 func BuildDBConfig(host string, port int, user string, dbName string, password string, version string) (dbConfig *DBConfig, err error) {
 	dbConfig = &DBConfig{
 		Host:     host,
@@ -46,19 +50,23 @@ func BuildDBConfig(host string, port int, user string, dbName string, password s
 		DBConn:    nil,
 		Version:  version,
 	}
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", dbConfig.Host, dbConfig.Port, dbConfig.User, dbConfig.Password, dbConfig.DBName)
+	return dbConfig, err
+}
+
+func (db *DBConfig) ConnectConfigToDB() (err error){
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db.Host, db.Port, db.User, db.Password, db.DBName)
 	DBConn, err := gorm.Open( "postgres", dsn)
 	if err != nil {
 		log.Printf("Failed to open connection to database using: %s\n", dsn)
-		return dbConfig, err
+		return err
 	}
-	dbConfig.DBConn = DBConn
-	err = dbConfig.DBConn.AutoMigrate(&House{}).Error
+	db.DBConn = DBConn
+	err = db.DBConn.AutoMigrate(&House{}).Error
 	if err != nil {
 		log.Println("Failed to migrate House type to database table")
-		return dbConfig, err
+		return err
 	}
-	return dbConfig, err
+	return nil
 }
 
 func Serve(urlPrefix string, efs embed.FS) gin.HandlerFunc {
@@ -78,10 +86,6 @@ func Serve(urlPrefix string, efs embed.FS) gin.HandlerFunc {
 		fileserver.ServeHTTP(c.Writer, c.Request)
 		c.Abort()
 	}
-}
-
-type Search struct {
-	Term string`json:"Term"`
 }
 
 // Take a search condition and do the PSQL query based on that.
@@ -120,16 +124,20 @@ func (db *DBConfig) SetUpRouter(address string, port int) (router *gin.Engine) {
 }
 
 // ImportData takes in the csv locally and reads it into psql
-func (db *DBConfig) ImportData() {
-	in, err := os.Open("/go/src/addresses-challenge/pkg/addresses/assets/addressdata.csv")
+func (db *DBConfig) ImportData(fileLoc string) (data []*House){
+	in, err := os.Open(fileLoc)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 	defer in.Close()
-	var data []*House
 	if err := gocsv.UnmarshalFile(in, &data); err != nil {
 		log.Fatalf(err.Error())
 	}
+	return data
+}
+
+// InsertData - this should have been a batch insert, but here we are.q
+func (db *DBConfig) InsertData(data []*House) {
 	for _, home := range data {
 		err := db.InsertHouse(home)
 		if err != nil {
@@ -142,14 +150,21 @@ func RunServer(dbHost string, dbPort int, dbUser string, dbPassword string, dbNa
 	// Set up DB
 	db, err := BuildDBConfig(dbHost, dbPort, dbUser, dbName, dbPassword, version)
 	if err != nil {
+		log.Println("Database config setup failed.")
+		return err
+	}
+	err = db.ConnectConfigToDB()
+	if err != nil {
 		log.Println("Database init failed.")
 		log.Printf("dbHost: %v, dbport: %v, dbUser %v, dbName %v, dbPassword: %v", dbHost, dbPort, dbUser, dbName, dbPassword )
 		return err
 	}
 
-	db.ImportData()
+	data := db.ImportData("/go/src/addresses-challenge/pkg/addresses/assets/addressdata.csv")
+	db.InsertData(data)
 	r := db.SetUpRouter(address, port)
 	addr := fmt.Sprintf("%s:%d", address, port)
 	err = r.Run(addr)
+
 	return err
 }
