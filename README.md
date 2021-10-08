@@ -10,19 +10,34 @@ a street address (not the city) to see results.
 1. Internet connection.
 1. Docker / Docker Compose
 
+### Tests
+1. Make sure you have go installed.
+1. Run `go build`
+1. Run `go test ./...`
+
+If you don't have Go already running, it's probably not worth it.  The tests are super simple and quick.  They are located at:
+`addresses/pkg/addresses/addresses_test.go`
+
+A more realistic set of tests would mock the database and make api calls, and that's not happening today.
+
 ### Instructions to run:
 1.  Clone down the repo with `git clone git@github.com:burkegg/addresses.git` or `git clone https://github.com/burkegg/addresses.git`
 depending on whether you're using ssh or not.
 1.  Run the command: `docker-compose up`.
 1.  Navigate to `localhost:8080`
 1.  Start typing an address.  Note - the search only works for the street address, not the city/state.
+1.  Click on the box of any address to visit it on Redfin.
+
+### Cleanup:
+1. Run:  `docker-compose down`
+1. Run:  `docker images` and find the id for `addresses_app`.  Copy it.
+1. Run:  `docker rmi -f <the id from above>`
 
 ## Tools / Thought process
 
 The CLI is Cobra/Viper which lets us pass flags in easily to deploy in different
 environments.  To get things going quicker, I used `dbt`, Dynamic Binary Toolkit
-to set up the boilerplate.  In the words of the dbt author: "You could
-set up all that boilerplate manually, but WHY?"
+to set up the boilerplate.
 
 To see which flags are available, go to:  `/addresses/cmd/run.go`.  The flags can be passed
 in through environment variables or on startup.  Viper also lets you use a config file.  The idea
