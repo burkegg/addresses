@@ -66,6 +66,6 @@ We only need a couple components, and the logic is all pretty simple.  You only 
 but I put in one to demonstrate passing props to a functional component.  The downside is that testing the
 client probably isn't going to happen here - but if you're building a UI like this it's probably going to stay pretty simple.
 
-The styling is all very simple and done in-line.  It's not optimal for rendering speed apparently,
+The styling is all simple and done in-line.  It's not optimal for rendering speed apparently,
 but I haven't worked on a website fast enough for that amount of time to matter.  Plus here everything
 is pretty quick and simple.
